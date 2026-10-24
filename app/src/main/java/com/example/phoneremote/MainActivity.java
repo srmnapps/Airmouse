@@ -2,17 +2,24 @@ package com.example.phoneremote;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -28,7 +35,9 @@ public class MainActivity extends Activity {
     private WebView web;
     private LinearLayout setup;
     private EditText addr;
+    private TextView status;
     private SharedPreferences prefs;
+    private boolean hadError = false;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -69,16 +78,76 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        web.setWebViewClient(new WebViewClient());
-        web.setBackgroundColor(Color.BLACK);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        web.setBackgroundColor(Color.parseColor("#111111"));
         web.setVisibility(View.GONE);
 
-        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
-        root.addView(web);
-        root.addView(setup);
+        // ---- status line (shows what is happening, and any error, in plain text) ----
+        status = new TextView(this);
+        status.setTextColor(Color.YELLOW);
+        status.setBackgroundColor(Color.parseColor("#CC000000"));
+        status.setTextSize(12);
+        status.setPadding(16, 6, 16, 6);
+        status.setVisibility(View.GONE);
+
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView v, String url, Bitmap icon) {
+                hadError = false;
+                say("Loading " + url);
+            }
+
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                if (!hadError) {
+                    say("Loaded " + url);
+                    status.postDelayed(() -> { if (!hadError) status.setVisibility(View.GONE); }, 3000);
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
+                if (r.isForMainFrame()) {
+                    hadError = true;
+                    say("ERROR " + e.getErrorCode() + ": " + e.getDescription() + "  (" + r.getUrl() + ")");
+                }
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView v, WebResourceRequest r, WebResourceResponse e) {
+                if (r.isForMainFrame()) {
+                    hadError = true;
+                    say("HTTP " + e.getStatusCode() + " from " + r.getUrl());
+                }
+            }
+        });
+
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage m) {
+                if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    say("JS error: " + m.message() + " (line " + m.lineNumber() + ")");
+                }
+                return true;
+            }
+        });
+
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(setup, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(status, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM));
         setContentView(root);
 
         hideBars();
+    }
+
+    private void say(String msg) {
+        status.setText(msg);
+        status.setVisibility(View.VISIBLE);
     }
 
     private void connect() {
@@ -88,6 +157,7 @@ public class MainActivity extends Activity {
         if (!a.startsWith("http")) a = "http://" + a;
         setup.setVisibility(View.GONE);
         web.setVisibility(View.VISIBLE);
+        say("Connecting to " + a + " ...");
         web.loadUrl(a);
         web.requestFocus();
     }
@@ -129,6 +199,7 @@ public class MainActivity extends Activity {
         if (web.getVisibility() == View.VISIBLE) {
             web.loadUrl("about:blank");
             web.setVisibility(View.GONE);
+            status.setVisibility(View.GONE);
             setup.setVisibility(View.VISIBLE);
         } else {
             super.onBackPressed();
