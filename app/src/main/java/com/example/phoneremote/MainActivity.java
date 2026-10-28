@@ -235,8 +235,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         float x = e.values[0], y = e.values[1];
         int rot = getWindowManager().getDefaultDisplay().getRotation();
         float hx, hy;
-        if (rot == Surface.ROTATION_270) { hx = -x; hy = y; }
-        else { hx = x; hy = -y; }                   // ROTATION_90 (the usual landscape)
+        if (rot == Surface.ROTATION_270) { hx = -x; hy = -y; }
+        else { hx = x; hy = y; }                    // ROTATION_90 (the usual landscape)
 
         accX += hx * dt; accY += hy * dt; accDt += dt;
         if (ts - lastFlush >= 8_000_000L && web.getVisibility() == View.VISIBLE) {
@@ -293,5 +293,4 @@ public class MainActivity extends Activity implements SensorEventListener {
             super.onBackPressed();
         }
     }
-            }
-            
+}
