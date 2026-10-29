@@ -54,6 +54,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private boolean gyroOn = false;
     private long lastTs = 0, lastFlush = 0;
     private float accX = 0, accY = 0, accDt = 0;
+    private float biasX = 0, biasY = 0;            // sensor drift, learned while the phone is held still
 
     @Override
     protected void onCreate(Bundle b) {
@@ -233,6 +234,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         // angular speed (rad/s) around the phone's own axes; the app is locked to landscape
         float x = e.values[0], y = e.values[1];
+        // drift removal: when the phone is almost still, whatever it reports is sensor offset; learn it and subtract it
+        if (Math.hypot(x - biasX, y - biasY) < 0.02f) {
+            biasX += (x - biasX) * 0.02f;
+            biasY += (y - biasY) * 0.02f;
+        }
+        x -= biasX; y -= biasY;
         int rot = getWindowManager().getDefaultDisplay().getRotation();
         float hx, hy;
         if (rot == Surface.ROTATION_270) { hx = x; hy = -y; }
@@ -293,4 +300,5 @@ public class MainActivity extends Activity implements SensorEventListener {
             super.onBackPressed();
         }
     }
-    }
+                            }
+            
