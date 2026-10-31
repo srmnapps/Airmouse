@@ -166,18 +166,6 @@ public class MainActivity extends Activity implements SensorEventListener {
                 Gravity.BOTTOM));
         setContentView(root);
 
-        // The Mouse-mode swipe starts at the left screen edge, where Android's Back gesture lives: keep the system out of
-        // the left edge (Android 10+ allows about 200 dp of height, so this covers the middle of the edge)
-        if (Build.VERSION.SDK_INT >= 29) {
-            root.addOnLayoutChangeListener((v, l, tp, r, bt, ol, ot, or2, ob) -> {
-                float dp = getResources().getDisplayMetrics().density;
-                int h = bt - tp, band = Math.min(h, (int) (200 * dp));
-                int top = (h - band) / 2;
-                v.setSystemGestureExclusionRects(
-                        Collections.singletonList(new Rect(0, top, (int) (48 * dp), top + band)));
-            });
-        }
-
         hideBars();
     }
 
@@ -315,4 +303,5 @@ public class MainActivity extends Activity implements SensorEventListener {
             super.onBackPressed();
         }
     }
-    }
+            }
+                     
